@@ -6,37 +6,57 @@ import {IoMdGift} from "react-icons/io";
 import {HiOutlineQuestionMarkCircle} from "react-icons/hi";
 import {PiHouseLineBold} from "react-icons/pi";
 import {MdOutlineKeyboardArrowUp, MdOutlineKeyboardDoubleArrowUp} from "react-icons/md";
+import {checkUpperBonus, getAllPossibleScores} from "./scoreUtils";
 
 function App() {
-    const [diceValues, setDiceValues] = useState(Array(5).fill(1)); // 5 dice, default value is 1
+    const [diceValues, setDiceValues] = useState<number[]>(Array(5).fill(0));
+    const [lockedDice, setLockedDice] = useState(Array(5).fill(false));
+    const [rollCount, setRollCount] = useState(0);
 
+
+    // Function for rolling the dice
     const handleRoll = () => {
-        // Generate a random number between 1 and 6 for each dice
-        const newDiceValues = diceValues.map(() => Math.floor(Math.random() * 6) + 1);
+        if (rollCount >= 3) return;
+
+        const newDiceValues = diceValues.map((val, index) =>
+            lockedDice[index] ? val : Math.floor(Math.random() * 6) + 1
+        );
+
         setDiceValues(newDiceValues);
         calculateScores(newDiceValues);
+        setRollCount(prevCount => prevCount + 1);
     };
 
+
+    // Function for locking dice in
+    const toggleLockDie = (index: number) => {
+        if (diceValues[index] === 0)  return;
+
+        const newLockedDice = [...lockedDice];
+        newLockedDice[index] = !newLockedDice[index];
+        setLockedDice(newLockedDice);
+    };
+
+
+    // Function for calculating scores based on rolled dice
     const calculateScores = (diceValues: number[]) => {
+        const possibleScores = getAllPossibleScores(diceValues);
         const newScores = [...scores];
 
-        for (let i = 0; i < 6; i++) {
-            const index = i * 2; // properly mapped interleaved index
-
-            if (!playedCells[index]) {
-                const score = diceValues.filter((d) => d === i + 1).reduce((acc, val) => acc + val, 0);
-                newScores[index] = score;
+        for (let i = 0; i < newScores.length; i++) {
+            if (!playedCells[i] && playedCells[11] && possibleScores[11] === 50) {
+                newScores[i] = 50;
+            }
+            else if (!playedCells[i]){
+                newScores[i] = possibleScores[i];
             }
         }
 
-        if (!playedCells[11]) {
-            if (diceValues[0] === diceValues[1] && diceValues[1] === diceValues[2] && diceValues[2] === diceValues[3] && diceValues[3] === diceValues[4]) {
-                newScores[11] = 50;
-            }
-        }
-
-        if (!playedCells[13]) {
-            newScores[13] = diceValues.reduce((acc, val) => acc + val, 0);
+        //TO DO: Actually make this work
+        const bonusEligible = checkUpperBonus(newScores);
+        if (bonusEligible && !playedCells[12]) {
+            newScores[12] = 35;
+            playedCells[12] = true;
         }
 
         setScores(newScores);
@@ -63,8 +83,8 @@ function App() {
         HiOutlineQuestionMarkCircle
     ];
 
-    console.log("Icons:", icons);
 
+    // Function for handling setting a score
     const handleClick = (index: number, scoreToAdd: number) => {
         if (!playedCells[index]) {
 
@@ -72,8 +92,10 @@ function App() {
             newPlayedCells[index] = true;
             setPlayedCells(newPlayedCells);
 
-            // Update the total score
             setTotalScore(totalScore + scoreToAdd);
+            setLockedDice(Array(5).fill(false));
+            setRollCount(0);
+            setDiceValues(Array(5).fill(0));
         }
     };
   return (
@@ -81,8 +103,10 @@ function App() {
         <div className="gameSide">
             <div className="diceContainer">
                 {diceValues.map((value, index) => (
-                    <div key={index} className="dice">
-                        <span className="diceNumber">{value}</span>
+                    <div key={index}
+                        className={`dice ${lockedDice[index] ? 'locked' : ''}`}
+                        onClick={() => toggleLockDie(index)}>
+                        <span className="diceNumber">{value !==  0 ? value : ''}</span>
                     </div>
                 ))}
             </div>
@@ -105,6 +129,9 @@ function App() {
                                 key={index}
                                 className={`rollCell ${playedCells[index] ? 'clicked' : ''}`}
                                 onClick={() => handleClick(index, score)}
+                                style={{
+                                    backgroundColor: index === 12 && score === 35 ? '#cce9ff' : undefined,
+                                }}
                             >
                                 <IconComponent color={playedCells[index] ? '#2d5d7b' : '#457eac'} size={28} />
                                 <div
