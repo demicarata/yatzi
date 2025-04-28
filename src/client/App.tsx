@@ -16,10 +16,13 @@ function App() {
     const [gameCode, setGameCode] = useState('');
     const [isHost, setIsHost] = useState(false); // To distinguish between the host and player
     const [errorMessage, setErrorMessage] = useState('');
+    const [opponentJoined, setOpponentJoined] = useState(false);
+    const [gameCodeInput, setGameCodeInput] = useState('');
 
     const [opponentScores, setOpponentScores] = useState(Array(14).fill(null));
     const [opponentTotal, setOpponentTotal] = useState(0);
 
+    // TO DO: Move this to a separate file?
     // Listen for socket events
     useEffect(() => {
         socket.on('playerNumber', (num) => {
@@ -40,6 +43,10 @@ function App() {
             newScores[index] = score;
             setOpponentScores(newScores);
             setOpponentTotal(prev => prev + score);
+
+            const newPlayedCells = [...opponentPlayedCells];
+            newPlayedCells[index] = true;
+            setOpponentPlayedCells(newPlayedCells);
         });
 
         socket.on('gameCreated', ({ gameCode, playerNumber }) => {
@@ -48,17 +55,29 @@ function App() {
             setIsHost(true); // Mark this player as the host
         });
 
-        socket.on('gameJoined', ({ playerNumber }) => {
+        socket.on('gameJoined', ({ gameCode, playerNumber }) => {
+            setGameCode(gameCode);
             setPlayerNumber(playerNumber);
             alert("You joined the game successfully!");
+            setGameCodeInput("");
+            setOpponentJoined(true);
+            setIsHost(false);
         });
 
         socket.on('playerJoined', ({ playerNumber }) => {
             alert(`Player ${playerNumber} has joined!`);
+            setOpponentJoined(true);
         });
 
         socket.on('gameJoinError', (message) => {
             setErrorMessage(message); // Show an error if the game join fails
+        });
+
+        socket.on('opponentRolled', (diceValues: number[]) => {
+            setOpponentDiceValues(diceValues);
+
+            const possibleScores = getAllPossibleScores(diceValues);
+            setOpponentPossibleScores(possibleScores);
         });
 
         return () => {
@@ -77,18 +96,25 @@ function App() {
 
 
     const joinGame = () => {
-        if (gameCode) {
-            socket.emit('joinGame', gameCode);
+        if (gameCodeInput) {
+            socket.emit('joinGame', gameCodeInput);
         } else {
             setErrorMessage("Please enter a valid game code.");
         }
     };
+
+    const isGameOver = () => {
+        return playedCells.every(cell => cell) && opponentPlayedCells.every(cell => cell);
+    }
 
 
     const [diceValues, setDiceValues] = useState<number[]>(Array(5).fill(0));
     const [lockedDice, setLockedDice] = useState(Array(5).fill(false));
     const [rollCount, setRollCount] = useState(0);
 
+    const [opponentDiceValues, setOpponentDiceValues] = useState<number[]>(Array(5).fill(0));
+    const [opponentPossibleScores, setOpponentPossibleScores] = useState<number[]>(Array(14).fill(0));
+    const [opponentPlayedCells, setOpponentPlayedCells] = useState(Array(14).fill(false));
 
     // Function for rolling the dice
     const handleRoll = () => {
@@ -161,6 +187,7 @@ function App() {
 
         socket.emit('updateScore', { index, score: scoreToAdd });
     };
+
   return (
       <div>
           {!gameCode && (
@@ -169,40 +196,57 @@ function App() {
                   <input
                       className="gameCodeInput"
                       type="text"
-                      value={gameCode}
-                      onChange={(e) => setGameCode(e.target.value)}
+                      value={gameCodeInput}
+                      onChange={(e) => setGameCodeInput(e.target.value)}
                       placeholder="Enter Game Code"
                   />
                   <button className="joinGameButton" onClick={joinGame}>Join Game</button>
               </div>
           )}
 
-          {/*
-            TO DO: Make this go dark until game is created/joined
-          */}
-          <div className="App">
-              <GameSide
-                  playerNumber={playerNumber}
-                  currentTurn={currentTurn}
-                  gameCode={gameCode}
-                  errorMessage={errorMessage}
-                  diceValues={diceValues}
-                  lockedDice={lockedDice}
-                  handleRoll={handleRoll}
-                  toggleLockDie={toggleLockDie}
-                  setGameCode={setGameCode}
-                  joinGame={joinGame}
-                  isHost={isHost}
-              />
-              <ScoreSide
-                  scores={scores}
-                  playedCells={playedCells}
-                  totalScore={totalScore}
-                  opponentScores={opponentScores}
-                  opponentTotal={opponentTotal}
-                  handleClick={handleClick}
-              />
-          </div>
+          {gameCode && !opponentJoined && (
+              <div className="waitingScreen">
+                  <h2>Waiting for opponent to join...</h2>
+                  <p>Share this code: <strong>{gameCode}</strong></p>
+              </div>
+          )}
+
+          {gameCode && opponentJoined && isGameOver() && (
+              <div className="gameOverScreen">
+                  <h2>Game Over!</h2>
+                  <p>Your Total Score: {totalScore}</p>
+                  <p>Opponent's Total Score: {opponentTotal}</p>
+                  <button onClick={() => window.location.reload()}>Play Again</button>
+              </div>
+          )}
+
+          {gameCode && opponentJoined && (
+              <div className="App">
+                  <GameSide
+                      playerNumber={playerNumber}
+                      currentTurn={currentTurn}
+                      gameCode={gameCode}
+                      errorMessage={errorMessage}
+                      diceValues={diceValues}
+                      lockedDice={lockedDice}
+                      handleRoll={handleRoll}
+                      toggleLockDie={toggleLockDie}
+                      setGameCode={setGameCode}
+                      joinGame={joinGame}
+                      isHost={isHost}
+                  />
+                  <ScoreSide
+                      scores={scores}
+                      playedCells={playedCells}
+                      totalScore={totalScore}
+                      opponentScores={opponentScores}
+                      opponentTotal={opponentTotal}
+                      opponentDiceValues={opponentDiceValues}
+                      opponentPossibleScores={opponentPossibleScores}
+                      handleClick={handleClick}
+                  />
+              </div>
+          )}
       </div>
   );
 }

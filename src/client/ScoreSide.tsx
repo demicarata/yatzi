@@ -14,6 +14,8 @@ interface ScoreSideProps {
     totalScore: number;
     opponentScores: (number | null)[];
     opponentTotal: number;
+    opponentDiceValues: number[];
+    opponentPossibleScores: number[];
     handleClick: (index: number, scoreToAdd: number) => void;
 }
 
@@ -23,6 +25,8 @@ const ScoreSide: React.FC<ScoreSideProps> = ({
     totalScore,
     opponentScores,
     opponentTotal,
+    opponentDiceValues,
+    opponentPossibleScores,
     handleClick,
 }) => {
     const icons = [
@@ -89,7 +93,11 @@ const ScoreSide: React.FC<ScoreSideProps> = ({
                                             fontWeight: 'bold',
                                         }}
                                     >
-                                        {score !== null ? score : '0'}
+                                        {score !== null
+                                            ? score
+                                            : (opponentPossibleScores[index] !== null ?
+                                                opponentPossibleScores[index]
+                                                : '0')}
                                     </div>
                                 </div>
                             );
