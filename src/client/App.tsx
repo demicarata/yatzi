@@ -14,7 +14,7 @@ function App() {
     const [currentTurn, setCurrentTurn] = useState<number | null>(null);
     const [playerNumber, setPlayerNumber] = useState<number | null>(null);
     const [gameCode, setGameCode] = useState('');
-    const [isHost, setIsHost] = useState(false); // To distinguish between the host and player
+    const [isHost, setIsHost] = useState(false); 
     const [errorMessage, setErrorMessage] = useState('');
     const [opponentJoined, setOpponentJoined] = useState(false);
     const [gameCodeInput, setGameCodeInput] = useState('');
