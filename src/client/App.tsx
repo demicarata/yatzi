@@ -174,7 +174,7 @@ function App() {
 
     // Function for handling setting a score
     const handleClick = (index: number, scoreToAdd: number) => {
-        if (playedCells[index] || playerNumber !== currentTurn || rollCount < 1) return;
+        if (playedCells[index] || playerNumber !== currentTurn || rollCount < 1 || index == 12) return;
 
         const newPlayedCells = [...playedCells];
         newPlayedCells[index] = true;
@@ -204,6 +204,7 @@ function App() {
             console.log("Game over triggered!");
         }
     }, [playedCells, opponentPlayedCells]);
+
 
   return (
       <div>
