@@ -115,10 +115,15 @@ function App() {
     const [opponentPossibleScores, setOpponentPossibleScores] = useState<number[]>(Array(14).fill(0));
     const [opponentPlayedCells, setOpponentPlayedCells] = useState(Array(14).fill(false));
 
+    const diceRollSound = new Audio('/dice_roll.mp3');
+    const buttonClickSound = new Audio('/mouse_click.mp3');
+
     // Function for rolling the dice
     const handleRoll = () => {
         console.log("Rolling dice...");
         if (rollCount >= 3 || playerNumber !== currentTurn) return;
+
+        diceRollSound.play();
 
         const newDiceValues = diceValues.map((val, index) =>
             lockedDice[index] ? val : Math.floor(Math.random() * 6) + 1
@@ -134,6 +139,7 @@ function App() {
     // Function for locking dice in
     const toggleLockDie = (index: number) => {
         if (diceValues[index] === 0)  return;
+        buttonClickSound.play();
 
         const newLockedDice = [...lockedDice];
         newLockedDice[index] = !newLockedDice[index];
@@ -155,18 +161,14 @@ function App() {
             }
         }
 
-        //TO DO: Actually make this work
-        const bonusEligible = checkUpperBonus(newScores);
-        if (bonusEligible && !playedCells[12]) {
-            newScores[12] = 35;
-            playedCells[12] = true;
-        }
 
         setScores(newScores);
     };
 
 
     const [playedCells, setPlayedCells] = useState(Array(14).fill(false)); // Track clicked status for each cell
+    playedCells[12] = true;
+    opponentPlayedCells[12] = true;
     const [totalScore, setTotalScore] = useState(0); // Track total score
 
     const [scores, setScores] = useState(Array(14).fill(null));
@@ -174,14 +176,26 @@ function App() {
 
     // Function for handling setting a score
     const handleClick = (index: number, scoreToAdd: number) => {
-        if (playedCells[index] || playerNumber !== currentTurn || rollCount < 1 || index == 12) return;
+        if (playedCells[index] || playerNumber !== currentTurn || rollCount < 1 || index === 12) return;
+        
+        buttonClickSound.play();
 
         const newPlayedCells = [...playedCells];
+        const newScores = [...scores];
         newPlayedCells[index] = true;
-        setPlayedCells(newPlayedCells);
+        newScores[index] = scoreToAdd;
+        
 
         console.log("Player ", playerNumber, " played", playedCells.filter(cell => cell).length, "cells.");
 
+        const upperBonusEligible = checkUpperBonus(newScores);
+        if (upperBonusEligible && !newPlayedCells[12]) {
+            newScores[12] = 35;
+            newPlayedCells[12] = true;
+        }
+
+        setScores(newScores);
+        setPlayedCells(newPlayedCells);
         setTotalScore(totalScore + scoreToAdd);
         setLockedDice(Array(5).fill(false));
         setRollCount(0);
