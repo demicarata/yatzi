@@ -1,3 +1,4 @@
+// scoreUtils.ts
 const UPPER_SECTION_INDICES = [0, 2, 4, 6, 8];
 
 /**

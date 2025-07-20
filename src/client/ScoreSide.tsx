@@ -36,6 +36,23 @@ const ScoreSide: React.FC<ScoreSideProps> = ({
         IoMdGift, HiOutlineQuestionMarkCircle
     ];
 
+    const scoreDescriptions = [
+        "Sum of 1s",
+        "Three of a kind - sum of all dice",
+        "Sum of 2s",
+        "Four of a kind - sum of all dice",
+        "Sum of 3s",
+        "Full House - 2 of one kind, 3 of another",
+        "Sum of 4s",
+        "Small Straight - 4 consecutive values",
+        "Sum of 5s",
+        "Large Straight - 5 consecutive values",
+        "Sum of 6s",
+        "Yahtzee - 5 identical values",
+        "Bonus - for reaching at least 63 points in the first column",
+        "Chance - sum of all dice"
+      ];
+
     return (
         <div className="scoreSide">
             <div className="scoreContainer">
@@ -53,7 +70,8 @@ const ScoreSide: React.FC<ScoreSideProps> = ({
                                     className={`rollCell ${playedCells[index] ? 'clicked' : ''}`}
                                     onClick={() => handleClick(index, score)}
                                     style={{
-                                        backgroundColor: index === 12 && score === 35 ? '#cce9ff' : undefined,
+                                        backgroundColor: index === 12 ? '#cce9ff' : undefined, 
+                                        position: 'relative'
                                     }}
                                 >
                                     <IconComponent color={playedCells[index] ? '#2d5d7b' : '#457eac'} size={28}/>
@@ -66,6 +84,7 @@ const ScoreSide: React.FC<ScoreSideProps> = ({
                                     >
                                         {score !== null ? score : '0'}
                                     </div>
+                                    <div className="tooltip">{scoreDescriptions[index]}</div>
                                 </div>
                             );
                         })}

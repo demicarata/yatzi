@@ -18,6 +18,7 @@ function App() {
     const [errorMessage, setErrorMessage] = useState('');
     const [opponentJoined, setOpponentJoined] = useState(false);
     const [gameCodeInput, setGameCodeInput] = useState('');
+    const [isGameOver, setIsGameOver] = useState(false);
 
     const [opponentScores, setOpponentScores] = useState(Array(14).fill(null));
     const [opponentTotal, setOpponentTotal] = useState(0);
@@ -44,9 +45,11 @@ function App() {
             setOpponentScores(newScores);
             setOpponentTotal(prev => prev + score);
 
-            const newPlayedCells = [...opponentPlayedCells];
-            newPlayedCells[index] = true;
-            setOpponentPlayedCells(newPlayedCells);
+            setOpponentPlayedCells(prev => {
+                const updated = [...prev];
+                updated[index] = true;
+                return updated;
+            });
         });
 
         socket.on('gameCreated', ({ gameCode, playerNumber }) => {
@@ -89,7 +92,7 @@ function App() {
         };
     }, []);
 
-
+    
     const handleCreateGame = () => {
         socket.emit('createGame');
     };
@@ -103,10 +106,6 @@ function App() {
         }
     };
 
-    const isGameOver = () => {
-        return playedCells.every(cell => cell) && opponentPlayedCells.every(cell => cell);
-    }
-
 
     const [diceValues, setDiceValues] = useState<number[]>(Array(5).fill(0));
     const [lockedDice, setLockedDice] = useState(Array(5).fill(false));
@@ -116,9 +115,15 @@ function App() {
     const [opponentPossibleScores, setOpponentPossibleScores] = useState<number[]>(Array(14).fill(0));
     const [opponentPlayedCells, setOpponentPlayedCells] = useState(Array(14).fill(false));
 
+    const diceRollSound = new Audio('/dice_roll.mp3');
+    const buttonClickSound = new Audio('/mouse_click.mp3');
+
     // Function for rolling the dice
     const handleRoll = () => {
+        console.log("Rolling dice...");
         if (rollCount >= 3 || playerNumber !== currentTurn) return;
+
+        diceRollSound.play();
 
         const newDiceValues = diceValues.map((val, index) =>
             lockedDice[index] ? val : Math.floor(Math.random() * 6) + 1
@@ -134,6 +139,7 @@ function App() {
     // Function for locking dice in
     const toggleLockDie = (index: number) => {
         if (diceValues[index] === 0)  return;
+        buttonClickSound.play();
 
         const newLockedDice = [...lockedDice];
         newLockedDice[index] = !newLockedDice[index];
@@ -155,18 +161,14 @@ function App() {
             }
         }
 
-        //TO DO: Actually make this work
-        const bonusEligible = checkUpperBonus(newScores);
-        if (bonusEligible && !playedCells[12]) {
-            newScores[12] = 35;
-            playedCells[12] = true;
-        }
 
         setScores(newScores);
     };
 
 
     const [playedCells, setPlayedCells] = useState(Array(14).fill(false)); // Track clicked status for each cell
+    playedCells[12] = true;
+    opponentPlayedCells[12] = true;
     const [totalScore, setTotalScore] = useState(0); // Track total score
 
     const [scores, setScores] = useState(Array(14).fill(null));
@@ -174,12 +176,26 @@ function App() {
 
     // Function for handling setting a score
     const handleClick = (index: number, scoreToAdd: number) => {
-        if (playedCells[index] || playerNumber !== currentTurn) return;
+        if (playedCells[index] || playerNumber !== currentTurn || rollCount < 1 || index === 12) return;
+        
+        buttonClickSound.play();
 
         const newPlayedCells = [...playedCells];
+        const newScores = [...scores];
         newPlayedCells[index] = true;
-        setPlayedCells(newPlayedCells);
+        newScores[index] = scoreToAdd;
+        
 
+        console.log("Player ", playerNumber, " played", playedCells.filter(cell => cell).length, "cells.");
+
+        const upperBonusEligible = checkUpperBonus(newScores);
+        if (upperBonusEligible && !newPlayedCells[12]) {
+            newScores[12] = 35;
+            newPlayedCells[12] = true;
+        }
+
+        setScores(newScores);
+        setPlayedCells(newPlayedCells);
         setTotalScore(totalScore + scoreToAdd);
         setLockedDice(Array(5).fill(false));
         setRollCount(0);
@@ -187,6 +203,22 @@ function App() {
 
         socket.emit('updateScore', { index, score: scoreToAdd });
     };
+
+    useEffect(() => {
+        console.log("playedCells:", playedCells);
+        console.log("opponentPlayedCells:", opponentPlayedCells);
+        console.log("playerDone:", playedCells.every(cell => cell));
+        console.log("opponentDone:", opponentPlayedCells.every(cell => cell));
+
+        const playerDone = playedCells.every(cell => cell);
+        const opponentDone = opponentPlayedCells.every(cell => cell);
+
+        if (playerDone && opponentDone) {
+            setIsGameOver(true);
+            console.log("Game over triggered!");
+        }
+    }, [playedCells, opponentPlayedCells]);
+
 
   return (
       <div>
@@ -211,7 +243,7 @@ function App() {
               </div>
           )}
 
-          {gameCode && opponentJoined && isGameOver() && (
+          {isGameOver && (
               <div className="gameOverScreen">
                   <h2>Game Over!</h2>
                   <p>Your Total Score: {totalScore}</p>
